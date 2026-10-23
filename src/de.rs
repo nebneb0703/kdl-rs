@@ -2245,7 +2245,6 @@ items {
         struct Item {
             #[serde(rename = "#0")]
             name: String,
-            #[serde(rename = "#1")]
             val: String,
         }
 
@@ -2261,7 +2260,9 @@ items {
         assert_eq!(config, Config { items: vec![] });
 
         let one_item_kdl = r#"
-item "a" "b"
+item "a" {
+    val "b"
+}
 "#;
         let config: Config = from_str(one_item_kdl).unwrap();
         assert_eq!(
@@ -2275,8 +2276,12 @@ item "a" "b"
         );
 
         let multiple_items_kdl = r#"
-item "a" "b"
-item "x" "y"
+item "a" {
+    val "b"
+}
+item "x" {
+    val "y"
+}
 "#;
         let config: Config = from_str(multiple_items_kdl).unwrap();
         assert_eq!(
