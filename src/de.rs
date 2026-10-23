@@ -1202,6 +1202,27 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
     }
 
     fn deserialize_seq<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
+        if self.nodes.len() == 1 {
+            let node = NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            };
+
+            // If this is the only node and it is empty, visit an empty sequence
+            if node.is_empty() {
+                return visitor.visit_seq(ArgSeqAccess::new(Vec::new().into_iter(), node.input, None))
+            }
+
+            let args = node.args();
+            let props = node.props();
+            let has_children = node.node.children().is_some();
+
+            if !args.is_empty() && props.is_empty() && !has_children {
+                // Only positional args → sequence
+                return visitor.visit_seq(ArgSeqAccess::new(args.into_iter(), self.input, None));
+            }
+        }
+
         visitor.visit_seq(NodeGroupSeqAccess {
             iter: self.nodes.iter(),
             input: self.input,
