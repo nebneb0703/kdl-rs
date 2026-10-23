@@ -590,7 +590,6 @@ impl<'de, 'a> de::Deserializer<'de> for DocumentDeserializer<'a> {
         visitor.visit_seq(NodeListSeqAccess {
             iter: self.doc.nodes().iter(),
             input: self.input,
-            first_node: None,
         })
     }
 
@@ -723,28 +722,9 @@ impl<'de, 'a> MapAccess<'de> for DocumentMapAccess<'a> {
 struct NodeDeserializer<'a> {
     node: &'a KdlNode,
     input: &'a Arc<String>,
-    first_node: Option<&'a KdlNode>,
 }
 
 impl<'a> NodeDeserializer<'a> {
-    fn new(node: &'a KdlNode, input: &'a Arc<String>) -> Self {
-        NodeDeserializer {
-            node,
-            input,
-            first_node: None,
-        }
-    }
-
-    fn fallback_node(&self) -> &'a KdlNode {
-        if let Some(n) = self.first_node
-            && self.is_scalar()
-        {
-            n
-        } else {
-            self.node
-        }
-    }
-
     fn args(&self) -> Vec<&'a KdlEntry> {
         self.node
             .entries()
@@ -919,7 +899,6 @@ impl<'de, 'a> de::Deserializer<'de> for NodeDeserializer<'a> {
             visitor.visit_seq(NodeListSeqAccess {
                 iter: children.nodes().iter(),
                 input: self.input,
-                first_node: (children.nodes().len() == 1).then_some(self.node),
             })
         } else {
             // Empty → empty sequence
@@ -945,7 +924,7 @@ impl<'de, 'a> de::Deserializer<'de> for NodeDeserializer<'a> {
     }
 
     fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
-        visitor.visit_map(NodeMapAccess::new(self.fallback_node(), self.input, None))
+        visitor.visit_map(NodeMapAccess::new(self.node, self.input, None))
     }
 
     fn deserialize_struct<V: Visitor<'de>>(
@@ -954,11 +933,7 @@ impl<'de, 'a> de::Deserializer<'de> for NodeDeserializer<'a> {
         fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        visitor.visit_map(NodeMapAccess::new(
-            self.fallback_node(),
-            self.input,
-            Some(fields),
-        ))
+        visitor.visit_map(NodeMapAccess::new(self.node, self.input, Some(fields)))
     }
 
     fn deserialize_enum<V: Visitor<'de>>(
@@ -1102,18 +1077,26 @@ impl<'de, 'a> de::Deserializer<'de> for ArgOrNodeDeserializer<'a, '_> {
         visitor: V,
     ) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
-        NodeDeserializer::new(self.parent_node, self.input)
-            .deserialize_struct(name, fields, visitor)
+        NodeDeserializer {
+            node: self.parent_node,
+            input: self.input
+        }.deserialize_struct(name, fields, visitor)
     }
 
     fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
-        NodeDeserializer::new(self.parent_node, self.input).deserialize_map(visitor)
+        NodeDeserializer {
+            node: self.parent_node,
+            input: self.input
+        }.deserialize_map(visitor)
     }
 
     fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
-        NodeDeserializer::new(self.parent_node, self.input).deserialize_tuple(len, visitor)
+        NodeDeserializer {
+            node: self.parent_node,
+            input: self.input
+        }.deserialize_tuple(len, visitor)
     }
 
     fn deserialize_tuple_struct<V: Visitor<'de>>(
@@ -1123,8 +1106,10 @@ impl<'de, 'a> de::Deserializer<'de> for ArgOrNodeDeserializer<'a, '_> {
         visitor: V,
     ) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
-        NodeDeserializer::new(self.parent_node, self.input)
-            .deserialize_tuple_struct(name, len, visitor)
+        NodeDeserializer {
+            node: self.parent_node,
+            input: self.input
+        }.deserialize_tuple_struct(name, len, visitor)
     }
 
     // target wants a scalar → we yield this one argument
@@ -1176,7 +1161,6 @@ impl<'de, 'a> de::Deserializer<'de> for ArgOrNodeDeserializer<'a, '_> {
 struct NodeListSeqAccess<'a> {
     iter: std::slice::Iter<'a, KdlNode>,
     input: &'a Arc<String>,
-    first_node: Option<&'a KdlNode>,
 }
 
 impl<'de, 'a> SeqAccess<'de> for NodeListSeqAccess<'a> {
@@ -1192,7 +1176,6 @@ impl<'de, 'a> SeqAccess<'de> for NodeListSeqAccess<'a> {
                 seed.deserialize(NodeDeserializer {
                     node,
                     input: self.input,
-                    first_node: self.first_node,
                 })
             })
             .transpose()
@@ -1209,8 +1192,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_any(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_any(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1225,8 +1210,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_bool<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_bool(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_bool(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1234,8 +1221,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_i8<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_i8(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_i8(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1243,8 +1232,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_i16<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_i16(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_i16(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1252,8 +1243,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_i32<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_i32(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_i32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1261,8 +1254,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_i64<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_i64(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_i64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1270,8 +1265,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_u8<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_u8(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_u8(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1279,8 +1276,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_u16<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_u16(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_u16(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1288,8 +1287,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_u32<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_u32(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_u32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1297,8 +1298,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_u64<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_u64(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_u64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1306,8 +1309,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_f32<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_f32(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_f32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1315,8 +1320,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_f64<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_f64(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_f64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1324,8 +1331,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_char<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_char(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_char(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1333,8 +1342,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_str<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_str(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_str(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1342,8 +1353,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_string<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_string(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_string(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1351,8 +1364,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_bytes<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_bytes(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_bytes(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1360,8 +1375,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_byte_buf<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_byte_buf(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_byte_buf(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1369,8 +1386,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_option<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_option(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_option(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1378,8 +1397,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_unit<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_unit(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_unit(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1391,8 +1412,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_unit_struct(name, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_unit_struct(name, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1404,8 +1427,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_newtype_struct(name, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_newtype_struct(name, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1413,8 +1438,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_tuple(len, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_tuple(len, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1427,8 +1454,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_tuple_struct(name, len, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_tuple_struct(name, len, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1436,8 +1465,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_map(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_map(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1450,8 +1481,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_struct(name, fields, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_struct(name, fields, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1464,8 +1497,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_enum(name, variants, visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_enum(name, variants, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1473,8 +1508,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_identifier<V: Visitor<'de> >(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_identifier(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_identifier(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1482,8 +1519,10 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
     fn deserialize_ignored_any<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
-            NodeDeserializer::new(self.nodes[0], self.input)
-                .deserialize_ignored_any(visitor)
+            NodeDeserializer {
+                node: self.nodes[0],
+                input: self.input
+            }.deserialize_ignored_any(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1504,7 +1543,12 @@ impl<'de, 'a> SeqAccess<'de> for NodeGroupSeqAccess<'a> {
     ) -> Result<Option<T::Value>, Self::Error> {
         self.iter
             .next()
-            .map(|node| seed.deserialize(NodeDeserializer::new(node, self.input)))
+            .map(|node| {
+                seed.deserialize(NodeDeserializer {
+                    node,
+                    input: self.input,
+                })
+            })
             .transpose()
     }
 }
@@ -1669,9 +1713,10 @@ impl<'de, 'a> MapAccess<'de> for NodeMapAccess<'a> {
                 entries: entries.clone(),
                 input: self.input,
             }),
-            NodeMapValue::SingleNode(node) => {
-                seed.deserialize(NodeDeserializer::new(node, self.input))
-            }
+            NodeMapValue::SingleNode(node) => seed.deserialize(NodeDeserializer {
+                node,
+                input: self.input,
+            }),
             NodeMapValue::MultiNode(nodes) => seed.deserialize(NodeGroupDeserializer {
                 nodes,
                 input: self.input,
@@ -1819,7 +1864,10 @@ impl<'de, 'a> de::VariantAccess<'de> for NodeVariantAccess<'a> {
         self,
         seed: T,
     ) -> Result<T::Value, Self::Error> {
-        seed.deserialize(NodeDeserializer::new(self.node, self.input))
+        seed.deserialize(NodeDeserializer {
+            node: self.node,
+            input: self.input,
+        })
     }
 
     fn tuple_variant<V: Visitor<'de>>(
@@ -1827,7 +1875,13 @@ impl<'de, 'a> de::VariantAccess<'de> for NodeVariantAccess<'a> {
         _len: usize,
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        de::Deserializer::deserialize_seq(NodeDeserializer::new(self.node, self.input), visitor)
+        de::Deserializer::deserialize_seq(
+            NodeDeserializer {
+                node: self.node,
+                input: self.input,
+            },
+            visitor,
+        )
     }
 
     fn struct_variant<V: Visitor<'de>>(
@@ -1835,7 +1889,13 @@ impl<'de, 'a> de::VariantAccess<'de> for NodeVariantAccess<'a> {
         _fields: &'static [&'static str],
         visitor: V,
     ) -> Result<V::Value, Self::Error> {
-        de::Deserializer::deserialize_map(NodeDeserializer::new(self.node, self.input), visitor)
+        de::Deserializer::deserialize_map(
+            NodeDeserializer {
+                node: self.node,
+                input: self.input,
+            },
+            visitor,
+        )
     }
 }
 
