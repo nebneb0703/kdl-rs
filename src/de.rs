@@ -2326,7 +2326,8 @@ items {
         struct Item {
             #[serde(rename = "#0")]
             name: String,
-            val: String,
+            val1: String,
+            val2: String,
         }
 
         #[derive(Deserialize, Debug, PartialEq, Default)]
@@ -2342,7 +2343,8 @@ items {
 
         let one_item_kdl = r#"
 item "a" {
-    val "b"
+    val1 "b"
+    val2 "c"
 }
 "#;
         let config: Config = from_str(one_item_kdl).unwrap();
@@ -2351,17 +2353,20 @@ item "a" {
             Config {
                 items: vec![Item {
                     name: "a".into(),
-                    val: "b".into()
+                    val1: "b".into(),
+                    val2: "c".into()
                 }],
             }
         );
 
         let multiple_items_kdl = r#"
 item "a" {
-    val "b"
+    val1 "b"
+    val2 "c"
 }
 item "x" {
-    val "y"
+    val1 "y"
+    val2 "z"
 }
 "#;
         let config: Config = from_str(multiple_items_kdl).unwrap();
@@ -2371,11 +2376,13 @@ item "x" {
                 items: vec![
                     Item {
                         name: "a".into(),
-                        val: "b".into()
+                        val1: "b".into(),
+                        val2: "c".into()
                     },
                     Item {
                         name: "x".into(),
-                        val: "y".into()
+                        val1: "y".into(),
+                        val2: "z".into()
                     },
                 ],
             }
