@@ -1079,24 +1079,27 @@ impl<'de, 'a> de::Deserializer<'de> for ArgOrNodeDeserializer<'a, '_> {
         *self.has_yielded_node = true;
         NodeDeserializer {
             node: self.parent_node,
-            input: self.input
-        }.deserialize_struct(name, fields, visitor)
+            input: self.input,
+        }
+        .deserialize_struct(name, fields, visitor)
     }
 
     fn deserialize_map<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
         NodeDeserializer {
             node: self.parent_node,
-            input: self.input
-        }.deserialize_map(visitor)
+            input: self.input,
+        }
+        .deserialize_map(visitor)
     }
 
     fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value, Error> {
         *self.has_yielded_node = true;
         NodeDeserializer {
             node: self.parent_node,
-            input: self.input
-        }.deserialize_tuple(len, visitor)
+            input: self.input,
+        }
+        .deserialize_tuple(len, visitor)
     }
 
     fn deserialize_tuple_struct<V: Visitor<'de>>(
@@ -1108,8 +1111,9 @@ impl<'de, 'a> de::Deserializer<'de> for ArgOrNodeDeserializer<'a, '_> {
         *self.has_yielded_node = true;
         NodeDeserializer {
             node: self.parent_node,
-            input: self.input
-        }.deserialize_tuple_struct(name, len, visitor)
+            input: self.input,
+        }
+        .deserialize_tuple_struct(name, len, visitor)
     }
 
     // target wants a scalar → we yield this one argument
@@ -1194,8 +1198,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_any(visitor)
+                input: self.input,
+            }
+            .deserialize_any(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1205,12 +1210,16 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             let node = NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
+                input: self.input,
             };
 
             // If this is the only node and it is empty, visit an empty sequence
             if node.is_empty() {
-                return visitor.visit_seq(ArgSeqAccess::new(Vec::new().into_iter(), node.input, None))
+                return visitor.visit_seq(ArgSeqAccess::new(
+                    Vec::new().into_iter(),
+                    node.input,
+                    None,
+                ));
             }
 
             let args = node.args();
@@ -1233,8 +1242,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_bool(visitor)
+                input: self.input,
+            }
+            .deserialize_bool(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1244,8 +1254,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_i8(visitor)
+                input: self.input,
+            }
+            .deserialize_i8(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1255,8 +1266,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_i16(visitor)
+                input: self.input,
+            }
+            .deserialize_i16(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1266,8 +1278,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_i32(visitor)
+                input: self.input,
+            }
+            .deserialize_i32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1277,8 +1290,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_i64(visitor)
+                input: self.input,
+            }
+            .deserialize_i64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1288,8 +1302,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_u8(visitor)
+                input: self.input,
+            }
+            .deserialize_u8(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1299,8 +1314,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_u16(visitor)
+                input: self.input,
+            }
+            .deserialize_u16(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1310,8 +1326,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_u32(visitor)
+                input: self.input,
+            }
+            .deserialize_u32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1321,8 +1338,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_u64(visitor)
+                input: self.input,
+            }
+            .deserialize_u64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1332,8 +1350,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_f32(visitor)
+                input: self.input,
+            }
+            .deserialize_f32(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1343,8 +1362,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_f64(visitor)
+                input: self.input,
+            }
+            .deserialize_f64(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1354,8 +1374,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_char(visitor)
+                input: self.input,
+            }
+            .deserialize_char(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1365,8 +1386,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_str(visitor)
+                input: self.input,
+            }
+            .deserialize_str(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1376,8 +1398,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_string(visitor)
+                input: self.input,
+            }
+            .deserialize_string(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1387,8 +1410,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_bytes(visitor)
+                input: self.input,
+            }
+            .deserialize_bytes(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1398,8 +1422,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_byte_buf(visitor)
+                input: self.input,
+            }
+            .deserialize_byte_buf(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1409,8 +1434,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_option(visitor)
+                input: self.input,
+            }
+            .deserialize_option(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1420,8 +1446,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_unit(visitor)
+                input: self.input,
+            }
+            .deserialize_unit(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1435,8 +1462,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_unit_struct(name, visitor)
+                input: self.input,
+            }
+            .deserialize_unit_struct(name, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1450,19 +1478,25 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_newtype_struct(name, visitor)
+                input: self.input,
+            }
+            .deserialize_newtype_struct(name, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
     }
 
-    fn deserialize_tuple<V: Visitor<'de>>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error> {
+    fn deserialize_tuple<V: Visitor<'de>>(
+        self,
+        len: usize,
+        visitor: V,
+    ) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_tuple(len, visitor)
+                input: self.input,
+            }
+            .deserialize_tuple(len, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1477,8 +1511,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_tuple_struct(name, len, visitor)
+                input: self.input,
+            }
+            .deserialize_tuple_struct(name, len, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1488,8 +1523,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_map(visitor)
+                input: self.input,
+            }
+            .deserialize_map(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1504,14 +1540,15 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_struct(name, fields, visitor)
+                input: self.input,
+            }
+            .deserialize_struct(name, fields, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
     }
 
-    fn deserialize_enum<V: Visitor<'de> >(
+    fn deserialize_enum<V: Visitor<'de>>(
         self,
         name: &'static str,
         variants: &'static [&'static str],
@@ -1520,19 +1557,21 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_enum(name, variants, visitor)
+                input: self.input,
+            }
+            .deserialize_enum(name, variants, visitor)
         } else {
             self.deserialize_seq(visitor)
         }
     }
 
-    fn deserialize_identifier<V: Visitor<'de> >(self, visitor: V) -> Result<V::Value, Self::Error> {
+    fn deserialize_identifier<V: Visitor<'de>>(self, visitor: V) -> Result<V::Value, Self::Error> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_identifier(visitor)
+                input: self.input,
+            }
+            .deserialize_identifier(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
@@ -1542,8 +1581,9 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
         if self.nodes.len() == 1 {
             NodeDeserializer {
                 node: self.nodes[0],
-                input: self.input
-            }.deserialize_ignored_any(visitor)
+                input: self.input,
+            }
+            .deserialize_ignored_any(visitor)
         } else {
             self.deserialize_seq(visitor)
         }
