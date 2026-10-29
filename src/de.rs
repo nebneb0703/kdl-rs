@@ -2321,7 +2321,7 @@ items {
     }
 
     #[test]
-    fn nodes_with_args_as_seq() {
+    fn nodes_with_children_as_seq() {
         #[derive(Deserialize, Debug, PartialEq)]
         struct Item {
             #[serde(rename = "#0")]
@@ -2383,6 +2383,63 @@ item "x" {
                         name: "x".into(),
                         val1: "y".into(),
                         val2: "z".into()
+                    },
+                ],
+            }
+        );
+    }
+
+    #[test]
+    fn nodes_with_args_as_seq() {
+        #[derive(Deserialize, Debug, PartialEq)]
+        struct Item {
+            #[serde(rename = "#0")]
+            name: String,
+            #[serde(rename = "#1")]
+            val: String,
+        }
+
+        #[derive(Deserialize, Debug, PartialEq, Default)]
+        #[serde(default)]
+        struct Config {
+            #[serde(rename = "item")]
+            items: Vec<Item>,
+        }
+
+        let no_items_kdl = "";
+        let config: Config = from_str(no_items_kdl).unwrap();
+        assert_eq!(config, Config { items: vec![] });
+
+        let one_item_kdl = r#"
+item "a" "b"
+"#;
+        let config: Config = from_str(one_item_kdl).unwrap();
+        assert_eq!(
+            config,
+            Config {
+                items: vec![Item {
+                    name: "a".into(),
+                    val: "b".into()
+                }],
+            }
+        );
+
+        let multiple_items_kdl = r#"
+item "a" "b"
+item "x" "y"
+"#;
+        let config: Config = from_str(multiple_items_kdl).unwrap();
+        assert_eq!(
+            config,
+            Config {
+                items: vec![
+                    Item {
+                        name: "a".into(),
+                        val: "b".into()
+                    },
+                    Item {
+                        name: "x".into(),
+                        val: "y".into()
                     },
                 ],
             }
