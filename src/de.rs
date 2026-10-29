@@ -1228,7 +1228,11 @@ impl<'de, 'a> de::Deserializer<'de> for NodeGroupDeserializer<'a> {
 
             if !args.is_empty() && props.is_empty() && !has_children {
                 // Only positional args → sequence
-                return visitor.visit_seq(ArgSeqAccess::new(args.into_iter(), self.input, None));
+                return visitor.visit_seq(ArgSeqAccess::new(
+                    args.into_iter(),
+                    self.input,
+                    Some(node.node),
+                ));
             }
         }
 
